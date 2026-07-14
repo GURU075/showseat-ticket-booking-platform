@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import javax.swing.text.html.parser.Entity;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -29,5 +30,13 @@ public class EventServiceImpl implements EventService {
         event.setUpdatedAt(LocalDateTime.now());
         event = eventRepository.save(event);
         return eventMapper.toResponseDTO(event);
+    }
+
+    @Override
+    public List<EventResponseDTO> getAllEvents() {
+        return eventRepository.findAll()
+                .stream()
+                .map(eventMapper::toResponseDTO)
+                .toList();
     }
 }
