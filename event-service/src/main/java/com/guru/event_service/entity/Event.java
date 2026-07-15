@@ -1,9 +1,6 @@
 package com.guru.event_service.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +28,24 @@ public class Event {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    @PrePersist
+    public void onCreate(){
+        this.setCreatedAt(LocalDateTime.now());
+        this.setUpdatedAt(LocalDateTime.now());
+        normaliseFields();
+    }
+    @PreUpdate
+    public void onUpdate(){
+        this.setUpdatedAt(LocalDateTime.now());
+        normaliseFields();
+
+    }
+    private void normaliseFields(){
+        if(status!=null){
+            this.status = status.trim().toUpperCase();
+        }
+    }
 
 
 }
