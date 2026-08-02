@@ -1,6 +1,7 @@
 package com.guru.event_service.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ public class Event {
     @Id
     private String id;
 
+    @Column(nullable = false)
     private String title;
 
     private String description;
@@ -23,6 +25,7 @@ public class Event {
 
     private Integer durationMinutes;
 
+    @Column(nullable = false)
     private String status;
 
     private LocalDateTime createdAt;

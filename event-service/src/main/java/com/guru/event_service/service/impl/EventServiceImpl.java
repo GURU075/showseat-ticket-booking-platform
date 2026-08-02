@@ -8,6 +8,8 @@ import com.guru.event_service.mapper.EventMapper;
 import com.guru.event_service.repositopry.EventRepository;
 import com.guru.event_service.service.EventService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import javax.swing.text.html.parser.Entity;
@@ -19,6 +21,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class EventServiceImpl implements EventService {
 
+    Logger logger = LoggerFactory.getLogger(EventServiceImpl.class);
+
     private final EventMapper eventMapper;
     private final EventRepository eventRepository;
 
@@ -27,7 +31,11 @@ public class EventServiceImpl implements EventService {
 
         Event event =eventMapper.toEntity(eventRequestDTO);
         event.setId(UUID.randomUUID().toString());
-        event = eventRepository.save(event);
+        try{
+            event = eventRepository.save(event);
+        }catch (Exception e){
+            logger.error("Error creating event: {}", e.getMessage());
+        }
         return eventMapper.toResponseDTO(event);
     }
 
