@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 
 @Data
 @RequiredArgsConstructor
+@AllArgsConstructor
 public class EventRequestDTO {
     @NotBlank(message = "Title is required")
     private String title;
