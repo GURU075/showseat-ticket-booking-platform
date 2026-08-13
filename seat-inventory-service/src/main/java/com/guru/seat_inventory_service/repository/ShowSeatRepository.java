@@ -30,14 +30,4 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, Long> {
             @Param("seatNumbers") Collection<String> seatNumbers
     );
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-            select seat from ShowSeat seat
-            where seat.showId = :showId and seat.lockId = :lockId
-            order by seat.seatNumber
-            """)
-    List<ShowSeat> findLockForUpdate(
-            @Param("showId") Long showId,
-            @Param("lockId") String lockId
-    );
 }

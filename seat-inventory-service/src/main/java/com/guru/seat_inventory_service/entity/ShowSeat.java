@@ -13,8 +13,7 @@ import java.time.LocalDateTime;
                 columnNames = {"show_id", "seat_number"}
         ),
         indexes = {
-                @Index(name = "idx_show_seats_show_status", columnList = "show_id,status,seat_number"),
-                @Index(name = "idx_show_seats_lock", columnList = "show_id,lock_id")
+                @Index(name = "idx_show_seats_show_status", columnList = "show_id,status,seat_number")
         }
 )
 @Getter
@@ -38,12 +37,6 @@ public class ShowSeat {
     @Column(nullable = false, length = 20)
     private SeatStatus status;
 
-    @Column(name = "lock_id", length = 50)
-    private String lockId;
-
-    @Column(name = "locked_by_user_id")
-    private Long lockedByUserId;
-
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -65,34 +58,15 @@ public class ShowSeat {
         updatedAt = LocalDateTime.now();
     }
 
-    public void lock(String newLockId, Long userId) {
-        status = SeatStatus.LOCKED;
-        lockId = newLockId;
-        lockedByUserId = userId;
-    }
-
-    public void release() {
-        status = SeatStatus.AVAILABLE;
-        clearLock();
-    }
-
     public void book() {
         status = SeatStatus.BOOKED;
-        clearLock();
-    }
-
-    private void clearLock() {
-        lockId = null;
-        lockedByUserId = null;
     }
 
     public void block() {
         status = SeatStatus.BLOCKED;
-        clearLock();
     }
 
     public void unblock() {
         status = SeatStatus.AVAILABLE;
-        clearLock();
     }
 }

@@ -5,39 +5,41 @@ import com.guru.seat_inventory_service.dto.LockSeatsRequest;
 import com.guru.seat_inventory_service.entity.SeatStatus;
 import com.guru.seat_inventory_service.entity.ShowSeat;
 import com.guru.seat_inventory_service.exception.SeatConflictException;
+import com.guru.seat_inventory_service.lock.InMemorySeatLockStore;
 import com.guru.seat_inventory_service.repository.ShowSeatRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
+@Import(SeatLockConcurrencyIntegrationTests.LockStoreTestConfiguration.class)
 class SeatLockConcurrencyIntegrationTests {
 
-    @Autowired
-    private SeatInventoryService seatInventoryService;
-
-    @Autowired
-    private ShowSeatRepository showSeatRepository;
+    @Autowired private SeatInventoryService seatInventoryService;
+    @Autowired private ShowSeatRepository showSeatRepository;
+    @Autowired private InMemorySeatLockStore seatLockStore;
 
     @BeforeEach
     void setUp() {
+        seatLockStore.clear();
         showSeatRepository.deleteAll();
         showSeatRepository.saveAndFlush(
-                ShowSeat.builder()
-                        .showId(101L)
-                        .seatNumber("A1")
-                        .status(SeatStatus.AVAILABLE)
-                        .build()
+                ShowSeat.builder().showId(101L).seatNumber("A1").status(SeatStatus.AVAILABLE).build()
         );
     }
 
@@ -53,6 +55,8 @@ class SeatLockConcurrencyIntegrationTests {
             List<String> outcomes = List.of(first.get(), second.get());
             assertEquals(1, outcomes.stream().filter("LOCKED"::equals).count());
             assertEquals(1, outcomes.stream().filter("CONFLICT"::equals).count());
+            assertEquals(SeatStatus.AVAILABLE, showSeatRepository.findByShowIdOrderBySeatNumberAsc(101L).get(0).getStatus());
+            assertEquals(1, seatLockStore.findLockedSeatNumbers(101L, List.of("A1")).size());
         } finally {
             executor.shutdownNow();
         }
@@ -69,18 +73,15 @@ class SeatLockConcurrencyIntegrationTests {
 
             List<String> outcomes = List.of(lock.get(), block.get());
             assertEquals(1, outcomes.stream().filter("CONFLICT"::equals).count());
-            assertEquals(
-                    1,
-                    outcomes.stream().filter(outcome -> !"CONFLICT".equals(outcome)).count()
-            );
+            assertEquals(1, outcomes.stream().filter(outcome -> !"CONFLICT".equals(outcome)).count());
 
             ShowSeat seat = showSeatRepository.findByShowIdOrderBySeatNumberAsc(101L).get(0);
-            if (seat.getStatus() == SeatStatus.BLOCKED) {
-                assertNull(seat.getLockId());
-                assertNull(seat.getLockedByUserId());
+            if (outcomes.contains("BLOCKED")) {
+                assertEquals(SeatStatus.BLOCKED, seat.getStatus());
+                assertTrue(seatLockStore.findLockedSeatNumbers(101L, List.of("A1")).isEmpty());
             } else {
-                assertEquals(SeatStatus.LOCKED, seat.getStatus());
-                assertEquals(501L, seat.getLockedByUserId());
+                assertEquals(SeatStatus.AVAILABLE, seat.getStatus());
+                assertEquals(Set.of("A1"), seatLockStore.findLockedSeatNumbers(101L, List.of("A1")));
             }
         } finally {
             executor.shutdownNow();
@@ -104,6 +105,15 @@ class SeatLockConcurrencyIntegrationTests {
             return "BLOCKED";
         } catch (SeatConflictException ex) {
             return "CONFLICT";
+        }
+    }
+
+    @TestConfiguration
+    static class LockStoreTestConfiguration {
+        @Bean
+        @Primary
+        InMemorySeatLockStore inMemorySeatLockStore() {
+            return new InMemorySeatLockStore();
         }
     }
 }

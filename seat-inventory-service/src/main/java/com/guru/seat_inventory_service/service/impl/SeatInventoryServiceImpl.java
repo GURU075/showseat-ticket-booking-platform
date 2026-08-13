@@ -8,25 +8,31 @@ import com.guru.seat_inventory_service.exception.ResourceNotFoundException;
 import com.guru.seat_inventory_service.exception.SeatConflictException;
 import com.guru.seat_inventory_service.exception.ExternalServiceException;
 import com.guru.seat_inventory_service.mapper.SeatMapper;
+import com.guru.seat_inventory_service.lock.SeatLockDetails;
+import com.guru.seat_inventory_service.lock.SeatLockStore;
 import com.guru.seat_inventory_service.repository.ShowSeatRepository;
 import com.guru.seat_inventory_service.service.SeatInventoryService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
+import java.util.Set;
 import java.util.function.Consumer;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SeatInventoryServiceImpl implements SeatInventoryService {
 
     private final ShowSeatRepository showSeatRepository;
     private final SeatMapper seatMapper;
     private final InventoryCatalogClient inventoryCatalogClient;
     private final SeatInventoryWriter seatInventoryWriter;
+    private final SeatLockStore seatLockStore;
+    private final SeatBookingWriter seatBookingWriter;
 
     @Override
     public List<SeatResponse> createSeats(Long showId) {
@@ -95,15 +101,41 @@ public class SeatInventoryServiceImpl implements SeatInventoryService {
     @Override
     @Transactional(readOnly = true)
     public List<SeatResponse> getSeats(Long showId, SeatStatus status) {
-        List<ShowSeat> seats = status == null
-                ? showSeatRepository.findByShowIdOrderBySeatNumberAsc(showId)
-                : showSeatRepository.findByShowIdAndStatusOrderBySeatNumberAsc(showId, status);
+        if (status == SeatStatus.BOOKED || status == SeatStatus.BLOCKED) {
+            List<ShowSeat> permanentSeats =
+                    showSeatRepository.findByShowIdAndStatusOrderBySeatNumberAsc(showId, status);
+            ensureInventoryExists(showId, permanentSeats);
+            return permanentSeats.stream().map(seatMapper::toResponse).toList();
+        }
 
+        List<ShowSeat> seats = showSeatRepository.findByShowIdOrderBySeatNumberAsc(showId);
+        ensureInventoryExists(showId, seats);
+
+        List<String> availableSeatNumbers = seats.stream()
+                .filter(seat -> seat.getStatus() == SeatStatus.AVAILABLE)
+                .map(ShowSeat::getSeatNumber)
+                .toList();
+        Set<String> lockedSeatNumbers =
+                seatLockStore.findLockedSeatNumbers(showId, availableSeatNumbers);
+
+        return seats.stream()
+                .map(seat -> toEffectiveResponse(seat, lockedSeatNumbers))
+                .filter(response -> status == null || response.status() == status)
+                .toList();
+    }
+
+    private void ensureInventoryExists(Long showId, List<ShowSeat> seats) {
         if (seats.isEmpty() && !showSeatRepository.existsByShowId(showId)) {
             throw new ResourceNotFoundException("Seat inventory not found for show " + showId);
         }
+    }
 
-        return seats.stream().map(seatMapper::toResponse).toList();
+    private SeatResponse toEffectiveResponse(ShowSeat seat, Set<String> lockedSeatNumbers) {
+        SeatStatus effectiveStatus = seat.getStatus() == SeatStatus.AVAILABLE
+                && lockedSeatNumbers.contains(seat.getSeatNumber())
+                ? SeatStatus.LOCKED
+                : seat.getStatus();
+        return new SeatResponse(seat.getShowId(), seat.getSeatNumber(), effectiveStatus);
     }
 
     @Override
@@ -124,28 +156,57 @@ public class SeatInventoryServiceImpl implements SeatInventoryService {
             throw new SeatConflictException("Seats are not available: " + String.join(", ", unavailableSeats));
         }
 
-        String lockId = "LOCK-" + UUID.randomUUID();
-        seats.forEach(seat -> seat.lock(lockId, request.userId()));
+        SeatLockDetails lock = seatLockStore.acquire(
+                request.showId(),
+                request.userId(),
+                requestedNumbers
+        );
 
         return new SeatLockResponse(
-                lockId,
+                lock.lockId(),
                 request.showId(),
-                seatNumbers(seats),
+                lock.seatNumbers(),
                 SeatStatus.LOCKED,
-                null
+                lock.expiresAt()
         );
     }
 
     @Override
-    @Transactional
     public SeatActionResponse confirmSeats(LockActionRequest request) {
-        return changeLockedSeats(request, SeatStatus.BOOKED, ShowSeat::book);
+        SeatLockDetails lock = seatLockStore.verifyAndExtend(
+                request.showId(),
+                request.userId(),
+                request.lockId()
+        );
+        List<ShowSeat> bookedSeats = seatBookingWriter.confirm(request.showId(), lock.seatNumbers());
+        try {
+            seatLockStore.release(request.showId(), request.userId(), request.lockId());
+        } catch (ExternalServiceException | ResourceNotFoundException ex) {
+            // PostgreSQL is already committed as BOOKED. The stale Redis keys are harmless
+            // because permanent DB status wins when rendering inventory, and the keys expire.
+            log.warn("Booked seats but could not remove Redis lock {}", request.lockId(), ex);
+        }
+        return new SeatActionResponse(
+                request.lockId(),
+                request.showId(),
+                seatNumbers(bookedSeats),
+                SeatStatus.BOOKED
+        );
     }
 
     @Override
-    @Transactional
     public SeatActionResponse releaseSeats(LockActionRequest request) {
-        return changeLockedSeats(request, SeatStatus.AVAILABLE, ShowSeat::release);
+        SeatLockDetails released = seatLockStore.release(
+                request.showId(),
+                request.userId(),
+                request.lockId()
+        );
+        return new SeatActionResponse(
+                request.lockId(),
+                request.showId(),
+                released.seatNumbers(),
+                SeatStatus.AVAILABLE
+        );
     }
 
     @Override
@@ -195,35 +256,22 @@ public class SeatInventoryServiceImpl implements SeatInventoryService {
             );
         }
 
+        if (targetStatus == SeatStatus.BLOCKED) {
+            Set<String> lockedSeats = seatLockStore.findLockedSeatNumbers(
+                    request.showId(),
+                    requestedNumbers
+            );
+            if (!lockedSeats.isEmpty()) {
+                throw new SeatConflictException(
+                        "Locked seats cannot be blocked: " + String.join(", ", lockedSeats.stream().sorted().toList())
+                );
+            }
+        }
+
         seats.forEach(transition);
         return new SeatStatusChangeResponse(
                 request.showId(),
                 seatNumbers(seats),
-                targetStatus
-        );
-    }
-
-    private SeatActionResponse changeLockedSeats(
-            LockActionRequest request,
-            SeatStatus targetStatus,
-            Consumer<ShowSeat> transition
-    ) {
-        List<ShowSeat> seats = showSeatRepository.findLockForUpdate(request.showId(), request.lockId());
-        if (seats.isEmpty()) {
-            throw new ResourceNotFoundException(
-                    "Active seat lock not found for show " + request.showId() + " and lock " + request.lockId()
-            );
-        }
-        if (seats.stream().anyMatch(seat -> !request.userId().equals(seat.getLockedByUserId()))) {
-            throw new SeatConflictException("Seat lock belongs to a different user");
-        }
-
-        List<String> seatNumbers = seatNumbers(seats);
-        seats.forEach(transition);
-        return new SeatActionResponse(
-                request.lockId(),
-                request.showId(),
-                seatNumbers,
                 targetStatus
         );
     }

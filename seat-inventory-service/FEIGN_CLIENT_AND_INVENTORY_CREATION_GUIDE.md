@@ -5,6 +5,9 @@ Service and Venue Service, how OpenFeign creates HTTP clients, why the code has
 both Feign interfaces and a business client interface, and why the database
 transaction starts only after the network calls finish.
 
+For a shorter beginner explanation of only the two client layers, read
+[`WHY_TWO_CLIENT_LAYERS_SIMPLE_GUIDE.md`](WHY_TWO_CLIENT_LAYERS_SIMPLE_GUIDE.md).
+
 ## The business problem
 
 The first implementation accepted this request:
