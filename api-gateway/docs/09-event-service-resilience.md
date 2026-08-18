@@ -1,4 +1,4 @@
-# Event Service Resilience: Circuit Breaker, Fallback, and Retry Safety
+# Gateway Downstream Resilience: Circuit Breakers, Fallbacks, and Retry Safety
 
 ## 1. What problem are we solving?
 
@@ -12,7 +12,8 @@ If Event Service is stopped, the network call fails. Without a resilience policy
 client may receive an inconsistent framework error and the Gateway may continue making
 calls to a service that is already known to be unavailable.
 
-This implementation gives the Event route a predictable failure contract:
+The Event route is used as the detailed teaching example. The same pattern now gives
+every downstream route a predictable failure contract:
 
 ```text
 Event Service available
@@ -22,8 +23,17 @@ Event Service unavailable
 Client -> Gateway -> Circuit Breaker -> internal fallback -> controlled HTTP 503
 ```
 
-Only Event Service has this policy for now. The other routes should receive their own
-separately named circuit breakers only after this implementation is understood.
+Each service has a separately named breaker and fallback:
+
+| Service | Circuit-breaker ID | Internal fallback | Public error code |
+| --- | --- | --- | --- |
+| Event | `eventServiceCircuitBreaker` | `/internal/fallback/event-service` | `EVENT_SERVICE_UNAVAILABLE` |
+| Venue | `venueServiceCircuitBreaker` | `/internal/fallback/venue-service` | `VENUE_SERVICE_UNAVAILABLE` |
+| Show | `showServiceCircuitBreaker` | `/internal/fallback/show-service` | `SHOW_SERVICE_UNAVAILABLE` |
+| Seat Inventory | `seatInventoryServiceCircuitBreaker` | `/internal/fallback/seat-inventory-service` | `SEAT_INVENTORY_SERVICE_UNAVAILABLE` |
+
+The breakers do not share state. For example, an OPEN Venue circuit does not block Show
+or Seat Inventory requests.
 
 ## 2. Simple real-world analogy
 
@@ -103,7 +113,7 @@ The starter provides:
 Do not add a separate version to this dependency. The imported Spring Cloud BOM selects
 the version compatible with the project's Spring Cloud release.
 
-## 5. Event route configuration
+## 5. Reference route configuration: Event Service
 
 ```yaml
 - id: event-service-route
@@ -183,6 +193,10 @@ also make these Event Service responses use the fallback:
 Client errors such as `400`, `404`, and `409` are not included. They are legitimate API
 responses and should be returned unchanged instead of being treated as infrastructure
 failures.
+
+Venue, Show, and Seat Inventory use the same filter structure with their own breaker ID
+and fallback URI. Separate IDs are essential because circuit state belongs to one
+downstream dependency, not to the entire Gateway.
 
 ## 6. Resilience4j configuration
 
@@ -291,6 +305,17 @@ configurable:
 | `EVENT_CIRCUIT_BREAKER_OPEN_WAIT` | `10s` | OPEN-state waiting time |
 | `EVENT_SERVICE_TIMEOUT` | `4s` | Per-call resilience timeout |
 
+The other services expose equivalent variables with these prefixes:
+
+| Service | Circuit-breaker prefix | Timeout variable |
+| --- | --- | --- |
+| Venue | `VENUE_CIRCUIT_BREAKER_...` | `VENUE_SERVICE_TIMEOUT` |
+| Show | `SHOW_CIRCUIT_BREAKER_...` | `SHOW_SERVICE_TIMEOUT` |
+| Seat Inventory | `SEAT_INVENTORY_CIRCUIT_BREAKER_...` | `SEAT_INVENTORY_SERVICE_TIMEOUT` |
+
+For example, `VENUE_CIRCUIT_BREAKER_OPEN_WAIT=20s` changes only the Venue circuit's
+OPEN-state wait and its fallback `Retry-After` value.
+
 Production values should be chosen from real latency and failure data. There is no
 single correct configuration for every service.
 
@@ -372,8 +397,8 @@ These patterns solve different problems:
 | Retry | Make another attempt after a failed attempt |
 | Fallback | Return a controlled alternative response |
 
-This Event route has a circuit breaker, timeout, and fallback. It does not have a
-Gateway `Retry` filter.
+Every downstream route has a circuit breaker, timeout, and fallback. None has a Gateway
+`Retry` filter.
 
 Although a transitive library may place retry classes on the classpath, no retry occurs
 unless retry behavior is explicitly configured and invoked.
@@ -454,8 +479,8 @@ The project verifies these behaviors:
 5. `Retry-After` and `Cache-Control` headers are present;
 6. a failing POST reaches the downstream stub exactly once;
 7. the internal fallback cannot be called directly;
-8. after five configured failures, a sixth call is rejected without reaching the
-   downstream stub, proving that the circuit is OPEN;
+8. for each of the four services, after five configured failures a sixth call is
+   rejected without reaching that downstream stub, proving that its circuit is OPEN;
 9. all existing Venue, Show, Inventory, health, and correlation-ID tests still pass.
 
 The POST invocation-count assertion is important. Checking only the final status would
@@ -501,11 +526,11 @@ The Gateway log should include:
 
 ## 15. Common mistakes
 
-### Adding the filter under every route immediately
+### Sharing one breaker across every route
 
-Use a separately named circuit breaker and separately tuned policy for each downstream
+Use a separately named circuit breaker and separately tunable policy for each downstream
 service. One shared breaker can incorrectly block healthy services because another
-service failed.
+service failed. This project therefore has four independent breaker IDs.
 
 ### Returning HTTP 200 from fallback
 
@@ -573,8 +598,8 @@ Service and can turn a partial outage into a wider outage.
 
 ### Where should the circuit breaker live?
 
-It should protect the component making the remote call. In this phase, the Gateway owns
-the client-facing Event route, so its route filter protects that call. Internal
+It should protect the component making the remote call. Here, the Gateway owns the
+client-facing downstream routes, so each route filter protects its call. Internal
 service-to-service clients may also need their own breakers independently.
 
 ### What is a fallback?
@@ -603,11 +628,13 @@ metrics and failure testing. Thresholds should not be copied blindly between ser
 
 ## 18. One-minute summary
 
-The Event route is wrapped by a Resilience4j circuit breaker. Connection failures,
-timeouts, and selected server-side 5xx responses use an internal fallback that returns
-a stable `503 application/problem+json` response. Repeated failures can open the circuit
-so later calls fail fast. The configuration does not retry requests, and an automated
-test proves a failing POST reaches Event Service only once.
+Event, Venue, Show, and Seat Inventory routes each have an independent Resilience4j
+circuit breaker. Connection failures, timeouts, and selected server-side 5xx responses
+use service-specific internal fallbacks that return stable
+`503 application/problem+json` responses. Repeated failures open only the affected service's
+circuit, so later calls fail fast without blocking healthy services. The configuration
+does not retry requests, and an automated test proves a failing POST reaches Event
+Service only once.
 
 ## 19. Further reading
 

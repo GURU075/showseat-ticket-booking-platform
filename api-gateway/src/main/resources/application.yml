@@ -40,16 +40,46 @@ spring:
               uri: ${VENUE_SERVICE_URL:http://localhost:8082}
               predicates:
                 - Path=/api/v1/cities/**,/api/v1/venues/**,/api/v1/screens/**,/api/v1/venue-seats/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    id: venueServiceCircuitBreaker
+                    fallbackUri: forward:/internal/fallback/venue-service
+                    statusCodes:
+                      - 500
+                      - 502
+                      - 503
+                      - 504
 
             - id: show-service-route
               uri: ${SHOW_SERVICE_URL:http://localhost:8083}
               predicates:
                 - Path=/api/v1/shows/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    id: showServiceCircuitBreaker
+                    fallbackUri: forward:/internal/fallback/show-service
+                    statusCodes:
+                      - 500
+                      - 502
+                      - 503
+                      - 504
 
             - id: seat-inventory-service-route
               uri: ${SEAT_INVENTORY_SERVICE_URL:http://localhost:8084}
               predicates:
                 - Path=/api/v1/show-seats/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    id: seatInventoryServiceCircuitBreaker
+                    fallbackUri: forward:/internal/fallback/seat-inventory-service
+                    statusCodes:
+                      - 500
+                      - 502
+                      - 503
+                      - 504
 server:
   port: ${SERVER_PORT:8088}
   shutdown: graceful
@@ -84,9 +114,45 @@ resilience4j:
         # An unavailable Event Service should not make the Gateway itself
         # unhealthy and trigger unnecessary container restarts.
         registerHealthIndicator: false
+      venueServiceCircuitBreaker:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: ${VENUE_CIRCUIT_BREAKER_WINDOW_SIZE:10}
+        minimumNumberOfCalls: ${VENUE_CIRCUIT_BREAKER_MINIMUM_CALLS:5}
+        failureRateThreshold: ${VENUE_CIRCUIT_BREAKER_FAILURE_RATE:50}
+        permittedNumberOfCallsInHalfOpenState: ${VENUE_CIRCUIT_BREAKER_HALF_OPEN_CALLS:3}
+        waitDurationInOpenState: ${VENUE_CIRCUIT_BREAKER_OPEN_WAIT:10s}
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        registerHealthIndicator: false
+      showServiceCircuitBreaker:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: ${SHOW_CIRCUIT_BREAKER_WINDOW_SIZE:10}
+        minimumNumberOfCalls: ${SHOW_CIRCUIT_BREAKER_MINIMUM_CALLS:5}
+        failureRateThreshold: ${SHOW_CIRCUIT_BREAKER_FAILURE_RATE:50}
+        permittedNumberOfCallsInHalfOpenState: ${SHOW_CIRCUIT_BREAKER_HALF_OPEN_CALLS:3}
+        waitDurationInOpenState: ${SHOW_CIRCUIT_BREAKER_OPEN_WAIT:10s}
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        registerHealthIndicator: false
+      seatInventoryServiceCircuitBreaker:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: ${SEAT_INVENTORY_CIRCUIT_BREAKER_WINDOW_SIZE:10}
+        minimumNumberOfCalls: ${SEAT_INVENTORY_CIRCUIT_BREAKER_MINIMUM_CALLS:5}
+        failureRateThreshold: ${SEAT_INVENTORY_CIRCUIT_BREAKER_FAILURE_RATE:50}
+        permittedNumberOfCallsInHalfOpenState: ${SEAT_INVENTORY_CIRCUIT_BREAKER_HALF_OPEN_CALLS:3}
+        waitDurationInOpenState: ${SEAT_INVENTORY_CIRCUIT_BREAKER_OPEN_WAIT:10s}
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        registerHealthIndicator: false
   timelimiter:
     instances:
       eventServiceCircuitBreaker:
         # Keep this lower than spring.http.clients.read-timeout (5s).
         timeoutDuration: ${EVENT_SERVICE_TIMEOUT:4s}
+        cancelRunningFuture: true
+      venueServiceCircuitBreaker:
+        timeoutDuration: ${VENUE_SERVICE_TIMEOUT:4s}
+        cancelRunningFuture: true
+      showServiceCircuitBreaker:
+        timeoutDuration: ${SHOW_SERVICE_TIMEOUT:4s}
+        cancelRunningFuture: true
+      seatInventoryServiceCircuitBreaker:
+        timeoutDuration: ${SEAT_INVENTORY_SERVICE_TIMEOUT:4s}
         cancelRunningFuture: true

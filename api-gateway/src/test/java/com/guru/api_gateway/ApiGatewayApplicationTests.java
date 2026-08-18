@@ -151,10 +151,18 @@ class ApiGatewayApplicationTests {
 	}
 
 	@Test
-	void doesNotExposeTheInternalFallbackEndpointDirectly() throws Exception {
-		HttpResponse<String> response = sendGet("/internal/fallback/event-service");
-
-		assertThat(response.statusCode()).isEqualTo(404);
+	void doesNotExposeInternalFallbackEndpointsDirectly() throws Exception {
+		for (String path : List.of(
+				"/internal/fallback/event-service",
+				"/internal/fallback/venue-service",
+				"/internal/fallback/show-service",
+				"/internal/fallback/seat-inventory-service"
+		)) {
+			HttpResponse<String> response = sendGet(path);
+			assertThat(response.statusCode())
+					.as("internal fallback %s must not be public", path)
+					.isEqualTo(404);
+		}
 	}
 
 	private void assertProxiedTo(String path, String expectedBody) throws Exception {

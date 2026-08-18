@@ -24,7 +24,7 @@ also changed to the WebFlux gateway starter.
 6. [Running, testing, and troubleshooting](06-testing-and-troubleshooting.md)
 7. [Exercises and next steps](07-exercises-and-next-steps.md)
 8. [Correlation-ID filter](08-correlation-id-filter.md)
-9. [Circuit breaker, fallback, and safe retry policy](09-event-service-resilience.md)
+9. [Downstream circuit breakers, fallbacks, and safe retry policy](09-event-service-resilience.md)
 
 ## Learning approach
 
