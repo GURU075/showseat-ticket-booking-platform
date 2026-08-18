@@ -13,7 +13,7 @@ public interface VenueServiceFeignClient {
     @GetMapping("/api/v1/screens/{screenId}")
     ScreenServiceResponse getScreen(@PathVariable("screenId") Long screenId);
 
-    @GetMapping("/api/v1/seats")
+    @GetMapping("/api/v1/venue-seats")
     List<SeatServiceResponse> getScreenSeats(@RequestParam("screenId") Long screenId);
 
     record ScreenServiceResponse(Long id, Long venueId) {

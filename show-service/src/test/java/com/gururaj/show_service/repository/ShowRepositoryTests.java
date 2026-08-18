@@ -26,7 +26,7 @@ class ShowRepositoryTests {
     @BeforeEach
     void setUp() {
         existing = showRepository.saveAndFlush(Show.builder()
-                .eventId(1L)
+                .eventId("event-1")
                 .venueId(1L)
                 .screenId(10L)
                 .startTime(LocalDateTime.parse("2026-07-25T18:00:00"))

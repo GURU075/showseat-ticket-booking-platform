@@ -13,7 +13,7 @@ class SeatInventoryControllerMappingTests {
     @Test
     void exposesSeatCommandsAtTheExpectedRoutes() throws NoSuchMethodException {
         RequestMapping baseMapping = SeatInventoryController.class.getAnnotation(RequestMapping.class);
-        assertArrayEquals(new String[]{"/api/v1/seats"}, baseMapping.value());
+        assertArrayEquals(new String[]{"/api/v1/show-seats"}, baseMapping.value());
 
         assertPostMapping("createSeats", Long.class, "/shows/{showId}");
         assertPostMapping("releaseSeats", LockActionRequest.class, "/release");

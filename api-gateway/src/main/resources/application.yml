@@ -1,0 +1,92 @@
+spring:
+  application:
+    name: api-gateway
+
+  lifecycle:
+    timeout-per-shutdown-phase: ${SHUTDOWN_TIMEOUT:20s}
+
+  # Applies bounded connection/read times to the imperative HTTP client used by
+  # Gateway Server MVC. Redirect responses are returned to the caller instead
+  # of being followed inside the gateway.
+  http:
+    clients:
+      connect-timeout: ${GATEWAY_CONNECT_TIMEOUT:2s}
+      read-timeout: ${GATEWAY_READ_TIMEOUT:5s}
+      redirects: dont-follow
+
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: event-service-route
+              uri: ${EVENT_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/event/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    id: eventServiceCircuitBreaker
+                    fallbackUri: forward:/internal/fallback/event-service
+                    # Treat server-side failures as service failures. Client-side
+                    # 4xx responses remain unchanged and do not open the circuit.
+                    statusCodes:
+                      - 500
+                      - 502
+                      - 503
+                      - 504
+
+            - id: venue-service-route
+              uri: ${VENUE_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/cities/**,/api/v1/venues/**,/api/v1/screens/**,/api/v1/venue-seats/**
+
+            - id: show-service-route
+              uri: ${SHOW_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/shows/**
+
+            - id: seat-inventory-service-route
+              uri: ${SEAT_INVENTORY_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/v1/show-seats/**
+server:
+  port: ${SERVER_PORT:8088}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Keep management exposure minimal until authentication is configured.
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+logging:
+  pattern:
+    correlation: "[correlationId=%X{correlationId:-none}] "
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      eventServiceCircuitBreaker:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: ${EVENT_CIRCUIT_BREAKER_WINDOW_SIZE:10}
+        minimumNumberOfCalls: ${EVENT_CIRCUIT_BREAKER_MINIMUM_CALLS:5}
+        failureRateThreshold: ${EVENT_CIRCUIT_BREAKER_FAILURE_RATE:50}
+        permittedNumberOfCallsInHalfOpenState: ${EVENT_CIRCUIT_BREAKER_HALF_OPEN_CALLS:3}
+        waitDurationInOpenState: ${EVENT_CIRCUIT_BREAKER_OPEN_WAIT:10s}
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        # An unavailable Event Service should not make the Gateway itself
+        # unhealthy and trigger unnecessary container restarts.
+        registerHealthIndicator: false
+  timelimiter:
+    instances:
+      eventServiceCircuitBreaker:
+        # Keep this lower than spring.http.clients.read-timeout (5s).
+        timeoutDuration: ${EVENT_SERVICE_TIMEOUT:4s}
+        cancelRunningFuture: true

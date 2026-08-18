@@ -13,7 +13,7 @@ For a shorter beginner explanation of only the two client layers, read
 The first implementation accepted this request:
 
 ```http
-POST /api/v1/seats/shows/101
+POST /api/v1/show-seats/shows/101
 Content-Type: application/json
 
 {
@@ -32,7 +32,7 @@ That allowed a caller to invent data:
 The improved endpoint is:
 
 ```http
-POST /api/v1/seats/shows/101
+POST /api/v1/show-seats/shows/101
 ```
 
 There is no request body. The services that own the source data provide it:
@@ -61,7 +61,7 @@ sequenceDiagram
     participant Writer as SeatInventoryWriter
     participant DB as PostgreSQL
 
-    Caller->>Controller: POST /api/v1/seats/shows/101
+    Caller->>Controller: POST /api/v1/show-seats/shows/101
     Controller->>Service: createSeats(101)
     Service->>DB: Does inventory already exist?
 
@@ -81,7 +81,7 @@ sequenceDiagram
 
     Service->>Catalog: getScreenSeats(10)
     Catalog->>VenueFeign: getScreenSeats(10)
-    VenueFeign->>Venue: GET /api/v1/seats?screenId=10
+    VenueFeign->>Venue: GET /api/v1/venue-seats?screenId=10
     Venue-->>Catalog: physical seats
     Service->>Service: Validate, normalize, sort, and deduplicate
 
@@ -249,7 +249,7 @@ ScreenServiceResponse getScreen(
     @PathVariable("screenId") Long screenId
 );
 
-@GetMapping("/api/v1/seats")
+@GetMapping("/api/v1/venue-seats")
 List<SeatServiceResponse> getScreenSeats(
     @RequestParam("screenId") Long screenId
 );
@@ -264,7 +264,7 @@ GET http://localhost:8082/api/v1/screens/10
 and:
 
 ```http
-GET http://localhost:8082/api/v1/seats?screenId=10
+GET http://localhost:8082/api/v1/venue-seats?screenId=10
 ```
 
 `@RequestParam` becomes a query parameter, whereas `@PathVariable` replaces a
@@ -472,7 +472,7 @@ If Show Service is unavailable:
   "status": 503,
   "error": "Service Unavailable",
   "message": "show-service is unavailable or timed out",
-  "path": "/api/v1/seats/shows/101",
+  "path": "/api/v1/show-seats/shows/101",
   "details": []
 }
 ```
@@ -484,7 +484,7 @@ If show `101` does not exist:
   "status": 404,
   "error": "Not Found",
   "message": "Show not found with id: 101",
-  "path": "/api/v1/seats/shows/101",
+  "path": "/api/v1/show-seats/shows/101",
   "details": []
 }
 ```
@@ -755,7 +755,7 @@ and seats:
 Calling:
 
 ```http
-POST /api/v1/seats/shows/101
+POST /api/v1/show-seats/shows/101
 ```
 
 creates:
@@ -856,13 +856,13 @@ After valid event, venue, screen, physical seats, and show data have been
 created in their owning services, call:
 
 ```http
-POST http://localhost:8084/api/v1/seats/shows/{realShowId}
+POST http://localhost:8084/api/v1/show-seats/shows/{realShowId}
 ```
 
 Then verify:
 
 ```http
-GET http://localhost:8084/api/v1/seats/shows/{realShowId}
+GET http://localhost:8084/api/v1/show-seats/shows/{realShowId}
 ```
 
 Calling creation a second time should return `409 Conflict` without calling

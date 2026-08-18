@@ -42,8 +42,8 @@ The current lock is stored in the `show_seats` database rows:
 - `lock_id = LOCK-<UUID>`
 - `locked_by_user_id = <userId>`
 
-It stays locked until the owner calls `/api/v1/seats/release` or
-`/api/v1/seats/confirm`.
+It stays locked until the owner calls `/api/v1/show-seats/release` or
+`/api/v1/show-seats/confirm`.
 The lock response contains `expiresAt: null` to make the missing expiry
 explicit. There is no scheduler pretending to provide Redis behavior.
 
@@ -58,7 +58,7 @@ The service runs on port `8084` by default.
 ### Create seats for a show
 
 ```http
-POST /api/v1/seats/shows/101
+POST /api/v1/show-seats/shows/101
 ```
 
 The request has no body. Seat Inventory Service calls Show Service to validate
@@ -74,13 +74,13 @@ release, block, and unblock continue to use the local inventory database.
 ### View seats
 
 ```http
-GET /api/v1/seats/shows/101
+GET /api/v1/show-seats/shows/101
 ```
 
 This returns every seat. To implement the "view available seats" use case:
 
 ```http
-GET /api/v1/seats/shows/101?status=AVAILABLE
+GET /api/v1/show-seats/shows/101?status=AVAILABLE
 ```
 
 The other valid filters are `LOCKED`, `BOOKED`, and `BLOCKED`.
@@ -88,7 +88,7 @@ The other valid filters are `LOCKED`, `BOOKED`, and `BLOCKED`.
 ### Lock selected seats
 
 ```http
-POST /api/v1/seats/lock
+POST /api/v1/show-seats/lock
 Content-Type: application/json
 
 {
@@ -116,7 +116,7 @@ The operation is all-or-nothing. If `A2` is already `LOCKED`, `BOOKED`, or
 ### Confirm a lock
 
 ```http
-POST /api/v1/seats/confirm
+POST /api/v1/show-seats/confirm
 Content-Type: application/json
 
 {
@@ -132,7 +132,7 @@ rows.
 ### Release a lock
 
 ```http
-POST /api/v1/seats/release
+POST /api/v1/show-seats/release
 Content-Type: application/json
 
 {
@@ -148,7 +148,7 @@ or release the lock.
 ### Block available seats
 
 ```http
-POST /api/v1/seats/block
+POST /api/v1/show-seats/block
 Content-Type: application/json
 
 {
@@ -163,7 +163,7 @@ On success, they become `BLOCKED` and cannot be selected by customers.
 ### Unblock seats
 
 ```http
-POST /api/v1/seats/unblock
+POST /api/v1/show-seats/unblock
 Content-Type: application/json
 
 {

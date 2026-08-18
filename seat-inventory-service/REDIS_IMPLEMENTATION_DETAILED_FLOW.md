@@ -278,7 +278,7 @@ Redis Cluster places keys with the same hash tag in the same hash slot. This all
 Endpoint:
 
 ```http
-POST /api/v1/seats/lock
+POST /api/v1/show-seats/lock
 ```
 
 Request:
@@ -407,7 +407,7 @@ API result    = LOCKED
 Endpoint:
 
 ```http
-GET /api/v1/seats/shows/101
+GET /api/v1/show-seats/shows/101
 ```
 
 ### Step 1: read permanent rows
@@ -499,7 +499,7 @@ API status = AVAILABLE
 Endpoint:
 
 ```http
-POST /api/v1/seats/confirm
+POST /api/v1/show-seats/confirm
 ```
 
 Request:
@@ -596,7 +596,7 @@ Redis lock keys = removed, or harmless until TTL expiry
 Endpoint:
 
 ```http
-POST /api/v1/seats/release
+POST /api/v1/show-seats/release
 ```
 
 ### Step 1: load the trusted group
@@ -856,7 +856,7 @@ Assume show `101` already has seats `A1` and `A2` in PostgreSQL.
 ### Lock
 
 ```http
-POST /api/v1/seats/lock
+POST /api/v1/show-seats/lock
 Content-Type: application/json
 
 {
@@ -871,7 +871,7 @@ Copy the returned lock ID.
 ### View
 
 ```http
-GET /api/v1/seats/shows/101
+GET /api/v1/show-seats/shows/101
 ```
 
 `A1` and `A2` should appear as `LOCKED`, even though their database rows remain `AVAILABLE`.
@@ -887,7 +887,7 @@ Try releasing the original lock as user `502`. It should receive a conflict and 
 ### Correct confirmation
 
 ```http
-POST /api/v1/seats/confirm
+POST /api/v1/show-seats/confirm
 Content-Type: application/json
 
 {

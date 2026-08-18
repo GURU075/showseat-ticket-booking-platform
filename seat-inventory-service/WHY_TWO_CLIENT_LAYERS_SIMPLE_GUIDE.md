@@ -160,7 +160,7 @@ ScreenServiceResponse getScreen(
     @PathVariable("screenId") Long screenId
 );
 
-@GetMapping("/api/v1/seats")
+@GetMapping("/api/v1/venue-seats")
 List<SeatServiceResponse> getScreenSeats(
     @RequestParam("screenId") Long screenId
 );
@@ -175,7 +175,7 @@ GET http://localhost:8082/api/v1/screens/10
 and:
 
 ```http
-GET http://localhost:8082/api/v1/seats?screenId=10
+GET http://localhost:8082/api/v1/venue-seats?screenId=10
 ```
 
 Feign clients therefore contain transport details:
