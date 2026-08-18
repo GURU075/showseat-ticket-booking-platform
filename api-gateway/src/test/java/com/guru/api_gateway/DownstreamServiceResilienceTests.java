@@ -50,6 +50,7 @@ class DownstreamServiceResilienceTests {
                 .uri(URI.create("http://127.0.0.1:" + this.gatewayPort + requestPath))
                 .timeout(Duration.ofSeconds(5))
                 .header(CorrelationIdFilter.HEADER_NAME, correlationId)
+                .header("Origin", "http://localhost:5173")
                 .GET()
                 .build();
 
@@ -59,6 +60,11 @@ class DownstreamServiceResilienceTests {
         assertThat(response.statusCode()).isEqualTo(503);
         assertThat(response.headers().firstValue(CorrelationIdFilter.HEADER_NAME))
                 .hasValue(correlationId);
+        assertThat(response.headers().firstValue("Access-Control-Allow-Origin"))
+                .hasValue("http://localhost:5173");
+        assertThat(response.headers().firstValue("Access-Control-Expose-Headers").orElse(""))
+                .containsIgnoringCase("Retry-After")
+                .containsIgnoringCase("X-Correlation-ID");
         assertThat(response.headers().firstValue("Retry-After")).hasValue("10");
         assertThat(response.headers().firstValue("Cache-Control")).hasValue("no-store");
         assertThat(response.headers().firstValue("Content-Type").orElse(""))

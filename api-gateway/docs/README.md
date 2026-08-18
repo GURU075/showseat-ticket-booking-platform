@@ -25,6 +25,7 @@ also changed to the WebFlux gateway starter.
 7. [Exercises and next steps](07-exercises-and-next-steps.md)
 8. [Correlation-ID filter](08-correlation-id-filter.md)
 9. [Downstream circuit breakers, fallbacks, and safe retry policy](09-event-service-resilience.md)
+10. [CORS policy, preflight requests, and browser security](10-cors.md)
 
 ## Learning approach
 

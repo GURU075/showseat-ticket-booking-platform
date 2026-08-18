@@ -84,6 +84,14 @@ server:
   port: ${SERVER_PORT:8088}
   shutdown: graceful
 
+# Browser cross-origin policy. Keep the origin list explicit; never use "*"
+# when credentials are enabled. CORS applies only to public API paths.
+gateway:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:false}
+    max-age: ${CORS_MAX_AGE:1h}
+
 management:
   endpoints:
     web:

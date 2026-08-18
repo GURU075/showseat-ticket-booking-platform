@@ -32,6 +32,7 @@ class ApiGatewayApplicationTests {
 	private static final HttpServer VENUE_SERVICE = startService("venue");
 	private static final HttpServer SHOW_SERVICE = startService("show");
 	private static final HttpServer SEAT_INVENTORY_SERVICE = startService("inventory");
+	private static final AtomicInteger EVENT_SERVICE_ATTEMPTS = new AtomicInteger();
 	private static final AtomicInteger FAILED_EVENT_POST_ATTEMPTS = new AtomicInteger();
 
 	@LocalServerPort
@@ -165,6 +166,120 @@ class ApiGatewayApplicationTests {
 		}
 	}
 
+	@Test
+	void handlesAllowedCorsPreflightWithoutCallingEventService() throws Exception {
+		int attemptsBeforeRequest = EVENT_SERVICE_ATTEMPTS.get();
+
+		HttpResponse<String> response = sendPreflight(
+				"/api/event/create",
+				"http://localhost:5173",
+				"POST",
+				"Content-Type, Idempotency-Key, X-Correlation-ID"
+		);
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(response.headers().firstValue("Access-Control-Allow-Origin"))
+				.hasValue("http://localhost:5173");
+		assertThat(response.headers().firstValue("Access-Control-Allow-Methods").orElse(""))
+				.contains("POST");
+		assertThat(response.headers().firstValue("Access-Control-Allow-Headers").orElse(""))
+				.containsIgnoringCase("Content-Type")
+				.containsIgnoringCase("Idempotency-Key")
+				.containsIgnoringCase("X-Correlation-ID");
+		assertThat(response.headers().firstValue("Access-Control-Max-Age"))
+				.hasValue("3600");
+		assertThat(response.headers().firstValue("Access-Control-Allow-Credentials"))
+				.isEmpty();
+		assertThat(EVENT_SERVICE_ATTEMPTS.get() - attemptsBeforeRequest).isZero();
+	}
+
+	@Test
+	void addsCorsHeadersToAllowedActualRequest() throws Exception {
+		HttpResponse<String> response = sendGetWithOrigin(
+				"/api/event/getAll",
+				"http://localhost:3000"
+		);
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(response.headers().firstValue("Access-Control-Allow-Origin"))
+				.hasValue("http://localhost:3000");
+		assertThat(response.headers().firstValue("Access-Control-Expose-Headers").orElse(""))
+				.containsIgnoringCase("X-Correlation-ID")
+				.containsIgnoringCase("Retry-After");
+		assertThat(response.headers().allValues("Vary")).contains("Origin");
+	}
+
+	@Test
+	void rejectsDisallowedCorsPreflightWithoutCallingEventService() throws Exception {
+		int attemptsBeforeRequest = EVENT_SERVICE_ATTEMPTS.get();
+
+		HttpResponse<String> response = sendPreflight(
+				"/api/event/create",
+				"https://evil.example",
+				"POST",
+				"Content-Type"
+		);
+
+		assertThat(response.statusCode()).isEqualTo(403);
+		assertThat(response.headers().firstValue("Access-Control-Allow-Origin")).isEmpty();
+		assertThat(EVENT_SERVICE_ATTEMPTS.get() - attemptsBeforeRequest).isZero();
+	}
+
+	@Test
+	void rejectsDisallowedActualCorsRequestWithoutCallingEventService() throws Exception {
+		int attemptsBeforeRequest = EVENT_SERVICE_ATTEMPTS.get();
+
+		HttpResponse<String> response = sendGetWithOrigin(
+				"/api/event/getAll",
+				"https://evil.example"
+		);
+
+		assertThat(response.statusCode()).isEqualTo(403);
+		assertThat(response.headers().firstValue("Access-Control-Allow-Origin")).isEmpty();
+		assertThat(EVENT_SERVICE_ATTEMPTS.get() - attemptsBeforeRequest).isZero();
+	}
+
+	@Test
+	void rejectsCorsPreflightForUnapprovedMethod() throws Exception {
+		HttpResponse<String> response = sendPreflight(
+				"/api/event/getAll",
+				"http://localhost:5173",
+				"TRACE",
+				"Accept"
+		);
+
+		assertThat(response.statusCode()).isEqualTo(403);
+		assertThat(response.headers().firstValue("Access-Control-Allow-Origin")).isEmpty();
+	}
+
+	@Test
+	void doesNotApproveUnapprovedCorsRequestHeader() throws Exception {
+		HttpResponse<String> response = sendPreflight(
+				"/api/event/create",
+				"http://localhost:5173",
+				"POST",
+				"Content-Type, X-Admin-Override"
+		);
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(response.headers().firstValue("Access-Control-Allow-Origin"))
+				.hasValue("http://localhost:5173");
+		assertThat(response.headers().firstValue("Access-Control-Allow-Headers").orElse(""))
+				.containsIgnoringCase("Content-Type")
+				.doesNotContainIgnoringCase("X-Admin-Override");
+	}
+
+	@Test
+	void doesNotEnableCrossOriginAccessToActuator() throws Exception {
+		HttpResponse<String> response = sendGetWithOrigin(
+				"/actuator/health",
+				"http://localhost:5173"
+		);
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(response.headers().firstValue("Access-Control-Allow-Origin")).isEmpty();
+	}
+
 	private void assertProxiedTo(String path, String expectedBody) throws Exception {
 		HttpResponse<String> response = sendGet(path);
 
@@ -206,6 +321,40 @@ class ApiGatewayApplicationTests {
 		return client.send(request, HttpResponse.BodyHandlers.ofString());
 	}
 
+	private HttpResponse<String> sendGetWithOrigin(String path, String origin)
+			throws IOException, InterruptedException {
+		HttpRequest request = HttpRequest.newBuilder()
+				.uri(URI.create("http://127.0.0.1:" + this.gatewayPort + path))
+				.timeout(Duration.ofSeconds(5))
+				.header("Origin", origin)
+				.GET()
+				.build();
+		return HttpClient.newHttpClient().send(
+				request,
+				HttpResponse.BodyHandlers.ofString()
+		);
+	}
+
+	private HttpResponse<String> sendPreflight(
+			String path,
+			String origin,
+			String requestedMethod,
+			String requestedHeaders
+	) throws IOException, InterruptedException {
+		HttpRequest request = HttpRequest.newBuilder()
+				.uri(URI.create("http://127.0.0.1:" + this.gatewayPort + path))
+				.timeout(Duration.ofSeconds(5))
+				.header("Origin", origin)
+				.header("Access-Control-Request-Method", requestedMethod)
+				.header("Access-Control-Request-Headers", requestedHeaders)
+				.method("OPTIONS", HttpRequest.BodyPublishers.noBody())
+				.build();
+		return HttpClient.newHttpClient().send(
+				request,
+				HttpResponse.BodyHandlers.ofString()
+		);
+	}
+
 	private static void registerServiceUrl(
 			DynamicPropertyRegistry registry,
 			String property,
@@ -228,6 +377,9 @@ class ApiGatewayApplicationTests {
 
 	private static void respondWithRequestTarget(HttpExchange exchange, String serviceName)
 			throws IOException {
+		if (serviceName.equals("event")) {
+			EVENT_SERVICE_ATTEMPTS.incrementAndGet();
+		}
 		if (serviceName.equals("event")
 				&& exchange.getRequestMethod().equals("POST")
 				&& exchange.getRequestURI().getPath().equals("/api/event/test-downstream-failure")) {

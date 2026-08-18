@@ -66,11 +66,10 @@ predicate should represent an actual API requirement.
 
 Add these in small stages rather than all at once:
 
-1. CORS policy;
-2. authentication and authorization;
-3. rate limiting;
-4. service discovery and load-balanced `lb://` routes;
-5. Docker-specific service URLs.
+1. authentication and authorization;
+2. rate limiting;
+3. service discovery and load-balanced `lb://` routes;
+4. Docker-specific service URLs.
 
 ## Suggested review request
 
@@ -96,3 +95,4 @@ and whether internal paths are leaked. Explain problems but do not fix them yet.
 - [ ] I can explain correlation-ID propagation and why MDC must be cleaned.
 - [ ] I can explain the Event Service circuit-breaker states and controlled fallback.
 - [ ] I can explain why POST requests are not automatically retried.
+- [ ] I can explain CORS preflight and why CORS is not authentication.
