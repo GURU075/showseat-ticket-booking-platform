@@ -67,9 +67,8 @@ predicate should represent an actual API requirement.
 Add these in small stages rather than all at once:
 
 1. authentication and authorization;
-2. rate limiting;
-3. service discovery and load-balanced `lb://` routes;
-4. Docker-specific service URLs.
+2. service discovery and load-balanced `lb://` routes;
+3. Docker-specific service URLs.
 
 ## Suggested review request
 
@@ -96,3 +95,5 @@ and whether internal paths are leaked. Explain problems but do not fix them yet.
 - [ ] I can explain the Event Service circuit-breaker states and controlled fallback.
 - [ ] I can explain why POST requests are not automatically retried.
 - [ ] I can explain CORS preflight and why CORS is not authentication.
+- [ ] I can explain token-bucket capacity, refill, `429`, and `Retry-After`.
+- [ ] I know why an in-memory limiter is not global across Gateway replicas.

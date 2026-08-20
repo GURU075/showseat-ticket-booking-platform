@@ -92,6 +92,30 @@ gateway:
     allow-credentials: ${CORS_ALLOW_CREDENTIALS:false}
     max-age: ${CORS_MAX_AGE:1h}
 
+  # Per-client token buckets. Each downstream service has an independent quota,
+  # so heavy Event traffic cannot consume the Show or Inventory allowance.
+  rate-limit:
+    enabled: ${GATEWAY_RATE_LIMIT_ENABLED:true}
+    max-buckets: ${GATEWAY_RATE_LIMIT_MAX_BUCKETS:10000}
+    bucket-expiration: ${GATEWAY_RATE_LIMIT_BUCKET_EXPIRATION:10m}
+    policies:
+      event-service:
+        capacity: ${EVENT_RATE_LIMIT_CAPACITY:10}
+        refill-tokens: ${EVENT_RATE_LIMIT_REFILL_TOKENS:10}
+        refill-period: ${EVENT_RATE_LIMIT_REFILL_PERIOD:1m}
+      venue-service:
+        capacity: ${VENUE_RATE_LIMIT_CAPACITY:120}
+        refill-tokens: ${VENUE_RATE_LIMIT_REFILL_TOKENS:120}
+        refill-period: ${VENUE_RATE_LIMIT_REFILL_PERIOD:1m}
+      show-service:
+        capacity: ${SHOW_RATE_LIMIT_CAPACITY:120}
+        refill-tokens: ${SHOW_RATE_LIMIT_REFILL_TOKENS:120}
+        refill-period: ${SHOW_RATE_LIMIT_REFILL_PERIOD:1m}
+      seat-inventory-service:
+        capacity: ${SEAT_INVENTORY_RATE_LIMIT_CAPACITY:120}
+        refill-tokens: ${SEAT_INVENTORY_RATE_LIMIT_REFILL_TOKENS:120}
+        refill-period: ${SEAT_INVENTORY_RATE_LIMIT_REFILL_PERIOD:1m}
+
 management:
   endpoints:
     web:

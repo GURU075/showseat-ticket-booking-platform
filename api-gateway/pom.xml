@@ -29,6 +29,8 @@
 	<properties>
 		<java.version>17</java.version>
 		<spring-cloud.version>2025.1.2</spring-cloud.version>
+		<!-- Keep Bucket4j aligned with Spring Cloud Gateway Server MVC 5.0.2. -->
+		<bucket4j.version>8.15.0</bucket4j.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -43,6 +45,17 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<!-- Token-bucket algorithm used by the Gateway rate-limit filter. -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-core</artifactId>
+			<version>${bucket4j.version}</version>
+		</dependency>
+		<!-- Bounded, expiring storage for per-client buckets in this single instance. -->
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
 		</dependency>
 
 		<dependency>

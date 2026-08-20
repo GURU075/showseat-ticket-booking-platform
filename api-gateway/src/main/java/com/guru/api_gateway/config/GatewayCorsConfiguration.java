@@ -27,6 +27,8 @@ class GatewayCorsConfiguration {
     );
     private static final List<String> EXPOSED_HEADERS = List.of(
             "Retry-After",
+            "X-RateLimit-Limit",
+            "X-RateLimit-Remaining",
             "X-Correlation-ID"
     );
 
