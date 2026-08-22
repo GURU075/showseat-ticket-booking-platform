@@ -24,6 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static com.guru.api_gateway.support.DiscoveryTestSupport.disableEureka;
+import static com.guru.api_gateway.support.DiscoveryTestSupport.registerInstance;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ApiGatewayApplicationTests {
@@ -40,10 +42,11 @@ class ApiGatewayApplicationTests {
 
 	@DynamicPropertySource
 	static void downstreamServiceUrls(DynamicPropertyRegistry registry) {
-		registerServiceUrl(registry, "EVENT_SERVICE_URL", EVENT_SERVICE);
-		registerServiceUrl(registry, "VENUE_SERVICE_URL", VENUE_SERVICE);
-		registerServiceUrl(registry, "SHOW_SERVICE_URL", SHOW_SERVICE);
-		registerServiceUrl(registry, "SEAT_INVENTORY_SERVICE_URL", SEAT_INVENTORY_SERVICE);
+		disableEureka(registry);
+		registerInstance(registry, "event-service", 0, EVENT_SERVICE);
+		registerInstance(registry, "venue-service", 0, VENUE_SERVICE);
+		registerInstance(registry, "show-service", 0, SHOW_SERVICE);
+		registerInstance(registry, "seat-inventory-service", 0, SEAT_INVENTORY_SERVICE);
 	}
 
 	@AfterAll
@@ -353,14 +356,6 @@ class ApiGatewayApplicationTests {
 				request,
 				HttpResponse.BodyHandlers.ofString()
 		);
-	}
-
-	private static void registerServiceUrl(
-			DynamicPropertyRegistry registry,
-			String property,
-			HttpServer server
-	) {
-		registry.add(property, () -> "http://127.0.0.1:" + server.getAddress().getPort());
 	}
 
 	private static HttpServer startService(String serviceName) {

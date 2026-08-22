@@ -113,7 +113,7 @@ Current defaults are deliberately starter values, not traffic-tested production 
 
 | Service | Capacity | Refill |
 | --- | ---: | --- |
-| Event Service | 60 | 60/minute |
+| Event Service | 10 | 10/minute |
 | Venue Service | 120 | 120/minute |
 | Show Service | 120 | 120/minute |
 | Seat Inventory Service | 120 | 120/minute |

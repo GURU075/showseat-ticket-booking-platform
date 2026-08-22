@@ -11,6 +11,7 @@ A BookMyShow-style event ticket booking platform built using Spring Boot microse
 - booking-service
 - payment-service
 - notification-service
+- discovery-server
 - api-gateway
 - auth-service
 - user-service

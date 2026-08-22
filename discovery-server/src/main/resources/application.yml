@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: discovery-server
+  cloud:
+    # The registry stores metadata; it never selects downstream instances itself.
+    loadbalancer:
+      enabled: false
+
+server:
+  port: ${SERVER_PORT:8761}
+  shutdown: graceful
+
+eureka:
+  instance:
+    hostname: ${EUREKA_HOSTNAME:localhost}
+  client:
+    # A standalone development registry has no Eureka peer to join.
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never

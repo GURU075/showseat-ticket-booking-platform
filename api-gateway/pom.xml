@@ -37,6 +37,16 @@
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-gateway-server-webmvc</artifactId>
 		</dependency>
+		<!-- Registers the Gateway with Eureka and supplies discovered instances. -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+		</dependency>
+		<!-- Resolves lb:// service IDs and selects an instance for each request. -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-loadbalancer</artifactId>
+		</dependency>
 		<!-- Required by Spring Cloud Gateway's CircuitBreaker route filter. -->
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>

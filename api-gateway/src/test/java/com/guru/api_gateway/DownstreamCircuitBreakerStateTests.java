@@ -23,6 +23,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static com.guru.api_gateway.support.DiscoveryTestSupport.disableEureka;
+import static com.guru.api_gateway.support.DiscoveryTestSupport.registerInstance;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class DownstreamCircuitBreakerStateTests {
@@ -38,10 +40,11 @@ class DownstreamCircuitBreakerStateTests {
     static void failingDownstreamServices(DynamicPropertyRegistry registry) {
         String failingServiceUrl = "http://127.0.0.1:"
                 + FAILING_DOWNSTREAM_SERVICE.getAddress().getPort();
-        registry.add("EVENT_SERVICE_URL", () -> failingServiceUrl);
-        registry.add("VENUE_SERVICE_URL", () -> failingServiceUrl);
-        registry.add("SHOW_SERVICE_URL", () -> failingServiceUrl);
-        registry.add("SEAT_INVENTORY_SERVICE_URL", () -> failingServiceUrl);
+        disableEureka(registry);
+        registerInstance(registry, "event-service", 0, failingServiceUrl);
+        registerInstance(registry, "venue-service", 0, failingServiceUrl);
+        registerInstance(registry, "show-service", 0, failingServiceUrl);
+        registerInstance(registry, "seat-inventory-service", 0, failingServiceUrl);
     }
 
     @AfterAll

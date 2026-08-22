@@ -27,6 +27,7 @@ also changed to the WebFlux gateway starter.
 9. [Downstream circuit breakers, fallbacks, and safe retry policy](09-event-service-resilience.md)
 10. [CORS policy, preflight requests, and browser security](10-cors.md)
 11. [Rate limiting with token buckets](11-rate-limiting.md)
+12. [Service discovery and load-balanced routes](12-service-discovery-and-load-balancing.md)
 
 ## Learning approach
 
@@ -39,6 +40,7 @@ each route contract.
 | Application | Port | Purpose |
 | --- | ---: | --- |
 | API Gateway | `8088` | Public entry point for clients |
+| Discovery Server | `8761` | Eureka service registry and dashboard |
 | Event Service | `8081` | Event business operations |
 | Venue Service | `8082` | Venue, screen, city, and physical-seat catalog |
 | Show Service | `8083` | Scheduled shows |

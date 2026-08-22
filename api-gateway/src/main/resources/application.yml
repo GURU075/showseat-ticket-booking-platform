@@ -20,7 +20,7 @@ spring:
         webmvc:
           routes:
             - id: event-service-route
-              uri: ${EVENT_SERVICE_URL:http://localhost:8081}
+              uri: lb://event-service
               predicates:
                 - Path=/api/event/**
               filters:
@@ -37,7 +37,7 @@ spring:
                       - 504
 
             - id: venue-service-route
-              uri: ${VENUE_SERVICE_URL:http://localhost:8082}
+              uri: lb://venue-service
               predicates:
                 - Path=/api/v1/cities/**,/api/v1/venues/**,/api/v1/screens/**,/api/v1/venue-seats/**
               filters:
@@ -52,7 +52,7 @@ spring:
                       - 504
 
             - id: show-service-route
-              uri: ${SHOW_SERVICE_URL:http://localhost:8083}
+              uri: lb://show-service
               predicates:
                 - Path=/api/v1/shows/**
               filters:
@@ -67,7 +67,7 @@ spring:
                       - 504
 
             - id: seat-inventory-service-route
-              uri: ${SEAT_INVENTORY_SERVICE_URL:http://localhost:8084}
+              uri: lb://seat-inventory-service
               predicates:
                 - Path=/api/v1/show-seats/**
               filters:
@@ -80,9 +80,32 @@ spring:
                       - 502
                       - 503
                       - 504
+
+      loadbalancer:
+        # Avoid hidden retries, especially for non-idempotent POST requests.
+        retry:
+          enabled: false
+        # Build these child contexts at startup instead of on the first request.
+        eager-load:
+          clients:
+            - event-service
+            - venue-service
+            - show-service
+            - seat-inventory-service
 server:
   port: ${SERVER_PORT:8088}
   shutdown: graceful
+
+eureka:
+  client:
+    service-url:
+      # defaultZone is case-sensitive because it is a map key in Eureka.
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+    healthcheck:
+      enabled: true
+  instance:
+    # Advertise an address that other local/container instances can reach.
+    prefer-ip-address: ${EUREKA_PREFER_IP_ADDRESS:true}
 
 # Browser cross-origin policy. Keep the origin list explicit; never use "*"
 # when credentials are enabled. CORS applies only to public API paths.

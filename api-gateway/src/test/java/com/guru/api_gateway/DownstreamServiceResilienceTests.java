@@ -20,6 +20,8 @@ import java.time.Duration;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static com.guru.api_gateway.support.DiscoveryTestSupport.disableEureka;
+import static com.guru.api_gateway.support.DiscoveryTestSupport.registerInstance;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class DownstreamServiceResilienceTests {
@@ -32,10 +34,11 @@ class DownstreamServiceResilienceTests {
     @DynamicPropertySource
     static void stoppedDownstreamServices(DynamicPropertyRegistry registry) {
         String stoppedServiceUrl = "http://127.0.0.1:" + STOPPED_SERVICE_PORT;
-        registry.add("EVENT_SERVICE_URL", () -> stoppedServiceUrl);
-        registry.add("VENUE_SERVICE_URL", () -> stoppedServiceUrl);
-        registry.add("SHOW_SERVICE_URL", () -> stoppedServiceUrl);
-        registry.add("SEAT_INVENTORY_SERVICE_URL", () -> stoppedServiceUrl);
+        disableEureka(registry);
+        registerInstance(registry, "event-service", 0, stoppedServiceUrl);
+        registerInstance(registry, "venue-service", 0, stoppedServiceUrl);
+        registerInstance(registry, "show-service", 0, stoppedServiceUrl);
+        registerInstance(registry, "seat-inventory-service", 0, stoppedServiceUrl);
     }
 
     @ParameterizedTest(name = "{0} returns its controlled 503 response")
