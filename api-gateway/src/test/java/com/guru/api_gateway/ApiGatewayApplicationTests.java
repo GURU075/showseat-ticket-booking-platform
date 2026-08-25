@@ -34,6 +34,7 @@ class ApiGatewayApplicationTests {
 	private static final HttpServer VENUE_SERVICE = startService("venue");
 	private static final HttpServer SHOW_SERVICE = startService("show");
 	private static final HttpServer SEAT_INVENTORY_SERVICE = startService("inventory");
+	private static final HttpServer BOOKING_SERVICE = startService("booking");
 	private static final AtomicInteger EVENT_SERVICE_ATTEMPTS = new AtomicInteger();
 	private static final AtomicInteger FAILED_EVENT_POST_ATTEMPTS = new AtomicInteger();
 
@@ -47,11 +48,12 @@ class ApiGatewayApplicationTests {
 		registerInstance(registry, "venue-service", 0, VENUE_SERVICE);
 		registerInstance(registry, "show-service", 0, SHOW_SERVICE);
 		registerInstance(registry, "seat-inventory-service", 0, SEAT_INVENTORY_SERVICE);
+		registerInstance(registry, "booking-service", 0, BOOKING_SERVICE);
 	}
 
 	@AfterAll
 	static void stopDownstreamServices() {
-		List.of(EVENT_SERVICE, VENUE_SERVICE, SHOW_SERVICE, SEAT_INVENTORY_SERVICE)
+		List.of(EVENT_SERVICE, VENUE_SERVICE, SHOW_SERVICE, SEAT_INVENTORY_SERVICE, BOOKING_SERVICE)
 				.forEach(server -> server.stop(0));
 	}
 
@@ -82,6 +84,11 @@ class ApiGatewayApplicationTests {
 				"/api/v1/show-seats/shows/42",
 				"inventory:/api/v1/show-seats/shows/42"
 		);
+	}
+
+	@Test
+	void routesBookingRequestsWithoutChangingThePath() throws Exception {
+		assertProxiedTo("/api/v1/bookings/42", "booking:/api/v1/bookings/42");
 	}
 
 	@Test
@@ -160,7 +167,8 @@ class ApiGatewayApplicationTests {
 				"/internal/fallback/event-service",
 				"/internal/fallback/venue-service",
 				"/internal/fallback/show-service",
-				"/internal/fallback/seat-inventory-service"
+				"/internal/fallback/seat-inventory-service",
+				"/internal/fallback/booking-service"
 		)) {
 			HttpResponse<String> response = sendGet(path);
 			assertThat(response.statusCode())

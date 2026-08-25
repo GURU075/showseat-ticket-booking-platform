@@ -81,6 +81,21 @@ spring:
                       - 503
                       - 504
 
+            - id: booking-service-route
+              uri: lb://booking-service
+              predicates:
+                - Path=/api/v1/bookings/**,/api/v1/bookings
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    id: bookingServiceCircuitBreaker
+                    fallbackUri: forward:/internal/fallback/booking-service
+                    statusCodes:
+                      - 500
+                      - 502
+                      - 503
+                      - 504
+
       loadbalancer:
         # Avoid hidden retries, especially for non-idempotent POST requests.
         retry:
@@ -92,6 +107,7 @@ spring:
             - venue-service
             - show-service
             - seat-inventory-service
+            - booking-service
 server:
   port: ${SERVER_PORT:8088}
   shutdown: graceful
@@ -138,6 +154,11 @@ gateway:
         capacity: ${SEAT_INVENTORY_RATE_LIMIT_CAPACITY:120}
         refill-tokens: ${SEAT_INVENTORY_RATE_LIMIT_REFILL_TOKENS:120}
         refill-period: ${SEAT_INVENTORY_RATE_LIMIT_REFILL_PERIOD:1m}
+      booking-service:
+        # Booking creates are more expensive and write data, so use a lower quota.
+        capacity: ${BOOKING_RATE_LIMIT_CAPACITY:30}
+        refill-tokens: ${BOOKING_RATE_LIMIT_REFILL_TOKENS:30}
+        refill-period: ${BOOKING_RATE_LIMIT_REFILL_PERIOD:1m}
 
 management:
   endpoints:
@@ -196,6 +217,15 @@ resilience4j:
         waitDurationInOpenState: ${SEAT_INVENTORY_CIRCUIT_BREAKER_OPEN_WAIT:10s}
         automaticTransitionFromOpenToHalfOpenEnabled: true
         registerHealthIndicator: false
+      bookingServiceCircuitBreaker:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: ${BOOKING_CIRCUIT_BREAKER_WINDOW_SIZE:10}
+        minimumNumberOfCalls: ${BOOKING_CIRCUIT_BREAKER_MINIMUM_CALLS:5}
+        failureRateThreshold: ${BOOKING_CIRCUIT_BREAKER_FAILURE_RATE:50}
+        permittedNumberOfCallsInHalfOpenState: ${BOOKING_CIRCUIT_BREAKER_HALF_OPEN_CALLS:3}
+        waitDurationInOpenState: ${BOOKING_CIRCUIT_BREAKER_OPEN_WAIT:10s}
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        registerHealthIndicator: false
   timelimiter:
     instances:
       eventServiceCircuitBreaker:
@@ -210,4 +240,7 @@ resilience4j:
         cancelRunningFuture: true
       seatInventoryServiceCircuitBreaker:
         timeoutDuration: ${SEAT_INVENTORY_SERVICE_TIMEOUT:4s}
+        cancelRunningFuture: true
+      bookingServiceCircuitBreaker:
+        timeoutDuration: ${BOOKING_SERVICE_TIMEOUT:4s}
         cancelRunningFuture: true

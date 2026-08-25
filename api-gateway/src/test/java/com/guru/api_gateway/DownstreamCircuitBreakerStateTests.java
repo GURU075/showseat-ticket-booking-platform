@@ -45,6 +45,7 @@ class DownstreamCircuitBreakerStateTests {
         registerInstance(registry, "venue-service", 0, failingServiceUrl);
         registerInstance(registry, "show-service", 0, failingServiceUrl);
         registerInstance(registry, "seat-inventory-service", 0, failingServiceUrl);
+        registerInstance(registry, "booking-service", 0, failingServiceUrl);
     }
 
     @AfterAll
@@ -113,6 +114,11 @@ class DownstreamCircuitBreakerStateTests {
                         "Seat Inventory Service",
                         "/api/v1/show-seats/always-fails",
                         "SEAT_INVENTORY_SERVICE_UNAVAILABLE"
+                ),
+                Arguments.of(
+                        "Booking Service",
+                        "/api/v1/bookings/always-fails",
+                        "BOOKING_SERVICE_UNAVAILABLE"
                 )
         );
     }

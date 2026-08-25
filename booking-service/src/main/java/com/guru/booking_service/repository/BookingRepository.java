@@ -1,0 +1,12 @@
+package com.guru.booking_service.repository;
+
+import com.guru.booking_service.domain.Booking;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+import java.util.UUID;
+
+public interface BookingRepository extends JpaRepository<Booking, UUID> {
+
+    Optional<Booking> findByUserIdAndIdempotencyKey(Long userId, String idempotencyKey);
+}

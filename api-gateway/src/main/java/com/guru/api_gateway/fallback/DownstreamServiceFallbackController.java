@@ -43,24 +43,33 @@ final class DownstreamServiceFallbackController {
             "seat-inventory-service-unavailable",
             "SEAT_INVENTORY_SERVICE_UNAVAILABLE"
     );
+    private static final ServiceDefinition BOOKING_SERVICE = new ServiceDefinition(
+            "Booking Service",
+            "booking-service-unavailable",
+            "BOOKING_SERVICE_UNAVAILABLE"
+    );
 
     private final long eventRetryAfterSeconds;
     private final long venueRetryAfterSeconds;
     private final long showRetryAfterSeconds;
     private final long seatInventoryRetryAfterSeconds;
+    private final long bookingRetryAfterSeconds;
 
     DownstreamServiceFallbackController(
             @Value("${EVENT_CIRCUIT_BREAKER_OPEN_WAIT:10s}") Duration eventOpenStateWait,
             @Value("${VENUE_CIRCUIT_BREAKER_OPEN_WAIT:10s}") Duration venueOpenStateWait,
             @Value("${SHOW_CIRCUIT_BREAKER_OPEN_WAIT:10s}") Duration showOpenStateWait,
             @Value("${SEAT_INVENTORY_CIRCUIT_BREAKER_OPEN_WAIT:10s}")
-            Duration seatInventoryOpenStateWait
+            Duration seatInventoryOpenStateWait,
+            @Value("${BOOKING_CIRCUIT_BREAKER_OPEN_WAIT:10s}")
+            Duration bookingOpenStateWait
     ) {
         this.eventRetryAfterSeconds = toRetryAfterSeconds(eventOpenStateWait);
         this.venueRetryAfterSeconds = toRetryAfterSeconds(venueOpenStateWait);
         this.showRetryAfterSeconds = toRetryAfterSeconds(showOpenStateWait);
         this.seatInventoryRetryAfterSeconds =
                 toRetryAfterSeconds(seatInventoryOpenStateWait);
+        this.bookingRetryAfterSeconds = toRetryAfterSeconds(bookingOpenStateWait);
     }
 
     @RequestMapping("/internal/fallback/event-service")
@@ -87,6 +96,11 @@ final class DownstreamServiceFallbackController {
                 SEAT_INVENTORY_SERVICE,
                 this.seatInventoryRetryAfterSeconds
         );
+    }
+
+    @RequestMapping("/internal/fallback/booking-service")
+    ResponseEntity<ProblemDetail> bookingServiceUnavailable(HttpServletRequest request) {
+        return serviceUnavailable(request, BOOKING_SERVICE, this.bookingRetryAfterSeconds);
     }
 
     private static ResponseEntity<ProblemDetail> serviceUnavailable(

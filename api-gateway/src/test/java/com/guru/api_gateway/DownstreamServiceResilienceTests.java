@@ -39,6 +39,7 @@ class DownstreamServiceResilienceTests {
         registerInstance(registry, "venue-service", 0, stoppedServiceUrl);
         registerInstance(registry, "show-service", 0, stoppedServiceUrl);
         registerInstance(registry, "seat-inventory-service", 0, stoppedServiceUrl);
+        registerInstance(registry, "booking-service", 0, stoppedServiceUrl);
     }
 
     @ParameterizedTest(name = "{0} returns its controlled 503 response")
@@ -102,6 +103,11 @@ class DownstreamServiceResilienceTests {
                         "Seat Inventory Service",
                         "/api/v1/show-seats/shows/42",
                         "SEAT_INVENTORY_SERVICE_UNAVAILABLE"
+                ),
+                Arguments.of(
+                        "Booking Service",
+                        "/api/v1/bookings/42",
+                        "BOOKING_SERVICE_UNAVAILABLE"
                 )
         );
     }

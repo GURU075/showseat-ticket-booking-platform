@@ -8,7 +8,7 @@ A BookMyShow-style event ticket booking platform built using Spring Boot microse
 - venue-service
 - show-service
 - seat-inventory-service
-- booking-service
+- [booking-service](booking-service/docs/README.md) — idempotent booking creation and seat-lock orchestration
 - payment-service
 - notification-service
 - discovery-server
