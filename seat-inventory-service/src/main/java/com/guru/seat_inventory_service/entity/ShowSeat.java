@@ -43,6 +43,9 @@ public class ShowSeat {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "confirmed_lock_id", length = 80)
+    private String confirmedLockId;
+
     @PrePersist
     void prePersist() {
         LocalDateTime now = LocalDateTime.now();
@@ -58,8 +61,9 @@ public class ShowSeat {
         updatedAt = LocalDateTime.now();
     }
 
-    public void book() {
+    public void book(String lockId) {
         status = SeatStatus.BOOKED;
+        confirmedLockId = lockId;
     }
 
     public void block() {

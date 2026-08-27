@@ -22,6 +22,15 @@ spring:
   flyway:
     enabled: true
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${PAYMENT_EVENTS_GROUP:booking-service-payment-v1}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
   cloud:
     openfeign:
       client:
@@ -31,6 +40,10 @@ spring:
             read-timeout: ${CLIENT_READ_TIMEOUT_MS:3000}
             logger-level: basic
           seat-inventory-service:
+            connect-timeout: ${CLIENT_CONNECT_TIMEOUT_MS:2000}
+            read-timeout: ${CLIENT_READ_TIMEOUT_MS:3000}
+            logger-level: basic
+          payment-service:
             connect-timeout: ${CLIENT_CONNECT_TIMEOUT_MS:2000}
             read-timeout: ${CLIENT_READ_TIMEOUT_MS:3000}
             logger-level: basic
@@ -51,6 +64,7 @@ eureka:
 booking:
   currency: ${BOOKING_CURRENCY:INR}
   time-zone: ${APP_TIME_ZONE:Asia/Kolkata}
+  payment-events-topic: ${PAYMENT_EVENTS_TOPIC:payment-events.v1}
 
 management:
   endpoints:

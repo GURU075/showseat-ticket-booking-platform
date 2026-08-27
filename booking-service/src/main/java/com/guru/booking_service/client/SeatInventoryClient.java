@@ -16,6 +16,9 @@ public interface SeatInventoryClient {
     @PostMapping("/api/v1/show-seats/release")
     void release(@RequestBody LockActionRequest request);
 
+    @PostMapping("/api/v1/show-seats/confirm")
+    void confirm(@RequestBody LockActionRequest request);
+
     record LockSeatsRequest(Long showId, Long userId, List<String> seatNumbers) {
     }
 

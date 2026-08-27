@@ -17,6 +17,8 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, Long> {
 
     List<ShowSeat> findByShowIdAndStatusOrderBySeatNumberAsc(Long showId, SeatStatus status);
 
+    List<ShowSeat> findByShowIdAndConfirmedLockIdOrderBySeatNumberAsc(Long showId, String confirmedLockId);
+
     boolean existsByShowId(Long showId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

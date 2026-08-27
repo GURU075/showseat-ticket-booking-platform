@@ -3,6 +3,8 @@ package com.guru.booking_service.service;
 import com.guru.booking_service.domain.Booking;
 import com.guru.booking_service.exception.BookingException;
 import com.guru.booking_service.repository.BookingRepository;
+import com.guru.booking_service.repository.ProcessedPaymentEventRepository;
+import com.guru.booking_service.domain.ProcessedPaymentEvent;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -20,10 +22,12 @@ public class BookingPersistenceService {
 
     private final BookingRepository repository;
     private final Clock clock;
+    private final ProcessedPaymentEventRepository processedEvents;
 
-    public BookingPersistenceService(BookingRepository repository, Clock clock) {
+    public BookingPersistenceService(BookingRepository repository, Clock clock, ProcessedPaymentEventRepository processedEvents) {
         this.repository = repository;
         this.clock = clock;
+        this.processedEvents = processedEvents;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -84,5 +88,26 @@ public class BookingPersistenceService {
                         "BOOKING_NOT_FOUND",
                         "Booking " + bookingId + " was not found"
                 ));
+    }
+
+    @Transactional(readOnly = true)
+    public boolean paymentEventProcessed(UUID eventId) {
+        return processedEvents.existsById(eventId);
+    }
+
+    @Transactional
+    public void confirmFromPayment(UUID bookingId, UUID paymentId, UUID eventId, String eventType) {
+        if (processedEvents.existsById(eventId)) return;
+        Booking booking = getPendingOrLater(bookingId);
+        booking.confirm(paymentId, Instant.now(clock));
+        processedEvents.save(new ProcessedPaymentEvent(eventId, paymentId, bookingId, eventType, Instant.now(clock)));
+    }
+
+    @Transactional
+    public void cancelFromPayment(UUID bookingId, UUID paymentId, UUID eventId, String eventType) {
+        if (processedEvents.existsById(eventId)) return;
+        Booking booking = getPendingOrLater(bookingId);
+        booking.cancel(paymentId, Instant.now(clock));
+        processedEvents.save(new ProcessedPaymentEvent(eventId, paymentId, bookingId, eventType, Instant.now(clock)));
     }
 }

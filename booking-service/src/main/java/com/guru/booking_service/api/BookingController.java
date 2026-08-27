@@ -1,6 +1,8 @@
 package com.guru.booking_service.api;
 
 import com.guru.booking_service.service.BookingService;
+import com.guru.booking_service.service.PaymentCheckoutService;
+import com.guru.booking_service.client.PaymentClient;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.http.ResponseEntity;
@@ -22,9 +24,11 @@ import java.util.UUID;
 public class BookingController {
 
     private final BookingService bookingService;
+    private final PaymentCheckoutService paymentCheckoutService;
 
-    public BookingController(BookingService bookingService) {
+    public BookingController(BookingService bookingService, PaymentCheckoutService paymentCheckoutService) {
         this.bookingService = bookingService;
+        this.paymentCheckoutService = paymentCheckoutService;
     }
 
     @PostMapping
@@ -47,5 +51,13 @@ public class BookingController {
     @GetMapping("/{bookingId}")
     public BookingResponse get(@PathVariable UUID bookingId) {
         return bookingService.get(bookingId);
+    }
+
+    @PostMapping("/{bookingId}/payments")
+    public PaymentClient.PaymentDetails createPayment(
+            @PathVariable UUID bookingId,
+            @RequestHeader("Idempotency-Key")
+            @Pattern(regexp = "[A-Za-z0-9][A-Za-z0-9._:-]{0,127}") String idempotencyKey) {
+        return paymentCheckoutService.create(bookingId, idempotencyKey);
     }
 }

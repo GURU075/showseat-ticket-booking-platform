@@ -18,7 +18,7 @@ public class SeatBookingWriter {
     private final ShowSeatRepository showSeatRepository;
 
     @Transactional
-    public List<ShowSeat> confirm(Long showId, List<String> seatNumbers) {
+    public List<ShowSeat> confirm(Long showId, List<String> seatNumbers, String lockId) {
         List<ShowSeat> seats = showSeatRepository.findRequestedSeatsForUpdate(showId, seatNumbers);
         List<String> foundNumbers = seats.stream().map(ShowSeat::getSeatNumber).toList();
         List<String> missingNumbers = seatNumbers.stream()
@@ -30,8 +30,12 @@ public class SeatBookingWriter {
             );
         }
 
+        boolean alreadyConfirmed = seats.stream().allMatch(seat ->
+                seat.getStatus() == SeatStatus.BOOKED && lockId.equals(seat.getConfirmedLockId()));
+        if (alreadyConfirmed) return seats;
+
         List<String> conflictingSeats = seats.stream()
-                .filter(seat -> seat.getStatus() != SeatStatus.AVAILABLE)
+                .filter(seat -> seat.getStatus() != SeatStatus.AVAILABLE || seat.getConfirmedLockId() != null)
                 .map(seat -> seat.getSeatNumber() + " (" + seat.getStatus() + ")")
                 .toList();
         if (!conflictingSeats.isEmpty()) {
@@ -40,7 +44,12 @@ public class SeatBookingWriter {
             );
         }
 
-        seats.forEach(ShowSeat::book);
+        seats.forEach(seat -> seat.book(lockId));
         return seats;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ShowSeat> findConfirmed(Long showId, String lockId) {
+        return showSeatRepository.findByShowIdAndConfirmedLockIdOrderBySeatNumberAsc(showId, lockId);
     }
 }

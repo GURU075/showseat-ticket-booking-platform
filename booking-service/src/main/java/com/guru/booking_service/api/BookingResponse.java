@@ -16,6 +16,7 @@ public record BookingResponse(
         BookingStatus status,
         BigDecimal totalAmount,
         String currency,
+        UUID paymentId,
         Instant paymentDeadline,
         Instant createdAt,
         Instant updatedAt
@@ -29,6 +30,7 @@ public record BookingResponse(
                 booking.getStatus(),
                 booking.getTotalAmount(),
                 booking.getCurrency(),
+                booking.getPaymentId(),
                 booking.getLockExpiresAt(),
                 booking.getCreatedAt(),
                 booking.getUpdatedAt()

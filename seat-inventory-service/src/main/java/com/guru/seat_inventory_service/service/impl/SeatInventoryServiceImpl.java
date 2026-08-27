@@ -173,12 +173,15 @@ public class SeatInventoryServiceImpl implements SeatInventoryService {
 
     @Override
     public SeatActionResponse confirmSeats(LockActionRequest request) {
-        SeatLockDetails lock = seatLockStore.verifyAndExtend(
-                request.showId(),
-                request.userId(),
-                request.lockId()
-        );
-        List<ShowSeat> bookedSeats = seatBookingWriter.confirm(request.showId(), lock.seatNumbers());
+        SeatLockDetails lock;
+        try {
+            lock = seatLockStore.verifyAndExtend(request.showId(), request.userId(), request.lockId());
+        } catch (ResourceNotFoundException missingLock) {
+            List<ShowSeat> alreadyBooked = seatBookingWriter.findConfirmed(request.showId(), request.lockId());
+            if (alreadyBooked.isEmpty()) throw missingLock;
+            return new SeatActionResponse(request.lockId(), request.showId(), seatNumbers(alreadyBooked), SeatStatus.BOOKED);
+        }
+        List<ShowSeat> bookedSeats = seatBookingWriter.confirm(request.showId(), lock.seatNumbers(), request.lockId());
         try {
             seatLockStore.release(request.showId(), request.userId(), request.lockId());
         } catch (ExternalServiceException | ResourceNotFoundException ex) {

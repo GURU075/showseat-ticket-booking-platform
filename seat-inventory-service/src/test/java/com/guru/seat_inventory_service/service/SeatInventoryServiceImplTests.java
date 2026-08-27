@@ -165,7 +165,7 @@ class SeatInventoryServiceImplTests {
     void confirmsOwnedRedisLockThenBooksDatabaseSeatsAndCleansUpLock() {
         SeatLockDetails lock = lockDetails(List.of("A1", "A2"), Instant.now().plusSeconds(60));
         when(seatLockStore.verifyAndExtend(101L, 501L, "LOCK-123")).thenReturn(lock);
-        when(seatBookingWriter.confirm(101L, List.of("A1", "A2")))
+        when(seatBookingWriter.confirm(101L, List.of("A1", "A2"), "LOCK-123"))
                 .thenReturn(List.of(bookedSeat("A1"), bookedSeat("A2")));
         when(seatLockStore.release(101L, 501L, "LOCK-123")).thenReturn(lock);
 
@@ -175,7 +175,7 @@ class SeatInventoryServiceImplTests {
         assertEquals(List.of("A1", "A2"), response.seatNumbers());
         var order = inOrder(seatLockStore, seatBookingWriter);
         order.verify(seatLockStore).verifyAndExtend(101L, 501L, "LOCK-123");
-        order.verify(seatBookingWriter).confirm(101L, List.of("A1", "A2"));
+        order.verify(seatBookingWriter).confirm(101L, List.of("A1", "A2"), "LOCK-123");
         order.verify(seatLockStore).release(101L, 501L, "LOCK-123");
     }
 
@@ -192,7 +192,7 @@ class SeatInventoryServiceImplTests {
     void bookingRemainsSuccessfulIfRedisCleanupFailsAfterDatabaseCommit() {
         SeatLockDetails lock = lockDetails(List.of("A1"), Instant.now().plusSeconds(60));
         when(seatLockStore.verifyAndExtend(101L, 501L, "LOCK-123")).thenReturn(lock);
-        when(seatBookingWriter.confirm(101L, List.of("A1"))).thenReturn(List.of(bookedSeat("A1")));
+        when(seatBookingWriter.confirm(101L, List.of("A1"), "LOCK-123")).thenReturn(List.of(bookedSeat("A1")));
         when(seatLockStore.release(101L, 501L, "LOCK-123"))
                 .thenThrow(new ExternalServiceException("Redis unavailable"));
 

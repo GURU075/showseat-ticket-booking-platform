@@ -61,6 +61,9 @@ public class Booking {
     @Column(name = "lock_expires_at")
     private Instant lockExpiresAt;
 
+    @Column(name = "payment_id", unique = true)
+    private UUID paymentId;
+
     @Column(name = "idempotency_key", nullable = false, length = 128)
     private String idempotencyKey;
 
@@ -118,6 +121,22 @@ public class Booking {
         this.updatedAt = now;
     }
 
+    public void confirm(UUID paymentId, Instant now) {
+        if (status == BookingStatus.CONFIRMED && paymentId.equals(this.paymentId)) return;
+        if (status != BookingStatus.PENDING) throw new IllegalStateException("Only a pending booking can be confirmed");
+        this.paymentId = paymentId;
+        this.status = BookingStatus.CONFIRMED;
+        this.updatedAt = now;
+    }
+
+    public void cancel(UUID paymentId, Instant now) {
+        if (status == BookingStatus.CANCELLED && paymentId.equals(this.paymentId)) return;
+        if (status != BookingStatus.PENDING) throw new IllegalStateException("Only a pending booking can be cancelled");
+        this.paymentId = paymentId;
+        this.status = BookingStatus.CANCELLED;
+        this.updatedAt = now;
+    }
+
     public UUID getId() { return id; }
     public Long getUserId() { return userId; }
     public Long getShowId() { return showId; }
@@ -127,6 +146,7 @@ public class Booking {
     public String getCurrency() { return currency; }
     public String getLockId() { return lockId; }
     public Instant getLockExpiresAt() { return lockExpiresAt; }
+    public UUID getPaymentId() { return paymentId; }
     public String getIdempotencyKey() { return idempotencyKey; }
     public String getRequestHash() { return requestHash; }
     public Instant getCreatedAt() { return createdAt; }

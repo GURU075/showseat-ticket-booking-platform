@@ -62,6 +62,17 @@ same booking ID, and includes `Idempotency-Replayed: true`.
 GET http://localhost:8088/api/v1/bookings/{bookingId}
 ```
 
+## Start payment
+
+```http
+POST http://localhost:8088/api/v1/bookings/{bookingId}/payments
+Idempotency-Key: pay-booking-attempt-1
+```
+
+Payment results arrive asynchronously through Kafka. A successful result confirms the inventory
+and changes the booking to `CONFIRMED`; a failed result releases the lock and changes it to
+`CANCELLED`.
+
 ## Expected failures to practise
 
 | Test | Expected result |
@@ -87,9 +98,8 @@ circuit opening, and controlled outage responses.
 
 ## Known next phases
 
-1. Payment creation and webhook handling.
-2. Confirm seats and move `PENDING` to `CONFIRMED`.
-3. Cancel and release seats safely.
-4. Expire unpaid bookings with a scheduled worker.
-5. Authenticate requests and take `userId` from the token instead of the body.
-6. Add a durable outbox and reconciliation for cross-service failures.
+1. Expire unpaid bookings with a scheduled worker.
+2. Add refund orchestration when a successful payment cannot be fulfilled.
+3. Authenticate requests and take `userId` from the token instead of the body.
+4. Add a dead-letter topic and an operator-driven reconciliation endpoint.
+5. Add a real payment-provider adapter with signature verification.
